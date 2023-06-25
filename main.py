@@ -1,13 +1,16 @@
 #imports
 import csv
-import dask.dataframe as dd
+#import dask.dataframe as dd
 import psutil
 import pandas as pd
+from text_preprocessing import preprocess_text
+from text_preprocessing import remove_punctuation, remove_number, remove_whitespace, remove_special_character
 #import numpy as np
 
 #constants
 orig_path: str = "C:/Users/User/Desktop/Datasets/lyrics/archive/song_lyrics.csv"
 lv_song_path: str = "C:/Users/User/PycharmProjects/Latvian_lyrics_genres_classification/lv_songs_lyrics.csv"
+lv_song_preproc_path: str = "C:/Users/User/PycharmProjects/Latvian_lyrics_genres_classification/lv_songs_lyrics_preprocessed.csv"
 stopwords: list = ["aiz","ap","ar","apakš","ārpus","augšpus","bez","caur","dēļ","gar","iekš","iz","kopš","labad",
                    "lejpus","līdz","no","otrpus","pa","par","pār","pēc","pie","pirms","pret","priekš","starp","šaipus",
                    "uz","viņpus","virs","virspus","zem","apakšpus","un","bet","jo","ja","ka","lai","tomēr","tikko",
@@ -44,31 +47,36 @@ def calculate_chunk_size(total_memory, available_memory, percentage):
     return chunk_size
 
 
-def create_lv_song_dataset():
-    #atver orig_path
-    ddf: dd = dd.read_csv(orig_path, usecols=["id", "tag", "lyrics", "language"])
-
-    ddf = ddf[ddf.language == 'lv']
-    print(ddf.columns)
-    #df = df.dropna
-    #df = df.drop_duplicates()
-    print(ddf.npartitions)
-    print(ddf.count(axis='columns'))
-    #print(f"unikāli ieraksti: {df.value_counts}")
-    print(ddf.dtypes.head(5))
-    print(ddf.compute().head(5))
-    #atver lv_songs_path
-    #nolasa pa rindai
-    #ja "language" ir 'lv' tad peivieno lv_songs_path
-
-    #return
-
-
 def inspect_dataset(path):
-
+    f = pd.read_csv(path)
+    print("file read")
+    print(f.head())
     return
+
+
+def preprocess_dataset(path, save_path):
+    drop_list = ['language_cld3', 'language_ft', 'id', 'language', 'year', 'features', 'views', 'year', 'title',
+                 'artist']
+    f = pd.read_csv(path)
+    f = f.drop(drop_list, axis=1)
+    f['lyrics'] = f['lyrics'].apply(lambda x: f"\"{preprocess(x)}\"")
+    print(f.head())
+    print(f['lyrics'][0])
+    f.to_csv(save_path, index=False, encoding="utf-8")
+
+
+def preprocess(document: str) -> str:
+    #stemmer = LatvianStemmer
+    document = document.lower()
+    document = preprocess_text(document, [remove_special_character, remove_number, remove_whitespace, remove_punctuation])
+    #document = word_tokenize(document)
+    #document = [word for word in document if word not in lv_stopwords]
+    #document = [stemmer.stem(word) for word in document]
+    #document = ' '.join(document)
+    return document
 
 
 if __name__ == '__main__':
     #filter_large_csv(orig_path, lv_song_path, 'lv')
-    inspect_dataset(lv_song_path)
+    #inspect_dataset(lv_song_path)
+    preprocess_dataset(lv_song_path, lv_song_preproc_path)
