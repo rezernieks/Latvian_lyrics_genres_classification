@@ -133,30 +133,52 @@ def model_table(res, name, attr):
     return
 
 
-def mnb_and_evaluate(alpha, sets: list = None, vect: str = None):
+def select_vect_type(vect):
+    sets = []
     if vect == "BoW":
         sets = create_bow_vector()
     if vect == "TF-IDF":
         sets = create_tfidf_vector()
-    model = MultinomialNB(alpha=alpha)
-    model.fit(sets[0], sets[2])
-    y_pred = model.predict(sets[1])
-    report = classification_report(sets[3], y_pred, output_dict=True)
-    #print(classification_report(y_test, y_pred))
-    #print(model_report(report))
-    return model_report(report)
+    return sets
 
 
 def all_mnb():
+    def mnb_and_evaluate(alpha, sets: list = None, vect: str = None):
+        sets = select_vect_type(vect)
+        model = MultinomialNB(alpha=alpha)
+        model.fit(sets[0], sets[2])
+        y_pred = model.predict(sets[1])
+        report = classification_report(sets[3], y_pred, output_dict=True)
+        return model_report(report)
+
     res = []
     for v in ["BoW", "TF-IDF"]:
-        for a in [0.001, 0.005, 0.01, 0.05, 0.1]:
-            res.append([v, a]+mnb_and_evaluate(a, vect=v))
+        for a in range(1,21):
+            res.append([v, a/100]+mnb_and_evaluate(a/100, vect=v))
     return res
+
+def all_lr():
+    def lr_and_evaluate(m_it, c, sets: list = None, vect: str = None):
+        sets = select_vect_type(vect)
+        model = LogisticRegression(multi_class="multinomial", max_iter=m_it, penalty='l2', C=c)
+        model.fit(sets[0], sets[2])
+        y_pred = model.predict(sets[1])
+        report = classification_report(sets[3], y_pred, output_dict=True)
+        return model_report(report)
+
+    res = []
+    for v in ["BoW", "TF-IDF"]:
+        for i in [500,1000,2000]:
+            for c in [0.01, 0.1, 1, 10, 100]:
+                print(f'vect: {v}, i: {i}, c: {c}')
+                res.append([v, i, c]+lr_and_evaluate(m_it=i, c=c, vect=v))
+    return res
+
 
 
 if __name__ == '__main__':
     #filter_large_csv(orig_path, lv_song_path, 'lv')
     #inspect_dataset(lv_song_path)
     #preprocess_dataset(lv_song_path, lv_song_preproc_path)
-    model_table(all_mnb(), "mnb", ["v", "a"])
+    #model_table(all_mnb(), "mnb", ["v", "a"])
+    model_table(all_lr(), "lr", ["v", "max_iter", "C"])
